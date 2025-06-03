@@ -1,0 +1,20 @@
+experiment_id: experiment_existencea2ANDchain-successionabANDchain-responsea-b_4sym_20len
+formula1_name: Existence(c0,2)
+formula2_name: Chain succession(c1,c2)
+formula3_name: Chain response(c2, c3)
+formula1_index: 14
+formula2_index: 18
+formula3_index: 8
+formula1: F(c0 & X ( F(c0)))
+formula2: G((c1 <-> X(c2)))
+formula3: G(c2 -> X c3)
+num_symbols: 4
+max_length_traces: 20
+train_size_traces: 0.5
+mutually_exclusive_symbols: false
+cnn_model: untrained_CNN_NME_state_dict_4sym.pth
+hyperparameters:
+  batch_size: 64
+  learning_rate: 0.001
+  num_epochs: 20
+seed: 21

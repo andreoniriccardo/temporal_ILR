@@ -1,0 +1,20 @@
+experiment_id: experiment_precedenceab_2sym_10len
+formula1_name: Precedence(c0,c1)
+formula2_name: ''
+formula3_name: ''
+formula1_index: 3
+formula2_index: null
+formula3_index: null
+formula1: (! c1 U c0) | G (! c1)
+formula2: ''
+formula3: ''
+num_symbols: 2
+max_length_traces: 10
+train_size_traces: 0.5
+mutually_exclusive_symbols: false
+cnn_model: untrained_CNN_NME_state_dict_2sym.pth
+hyperparameters:
+  batch_size: 64
+  learning_rate: 0.001
+  num_epochs: 20
+seed: 21

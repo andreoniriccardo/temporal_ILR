@@ -1,0 +1,20 @@
+experiment_id: experiment_co-existenceabANDchoiceabANDalternate-succesiona-b_4sym_10len
+formula1_name: Co-existence(c0,c1)
+formula2_name: Choice(c1,c2)
+formula3_name: Alternate succesion(c2, c3)
+formula1_index: 17
+formula2_index: 13
+formula3_index: 7
+formula1: (F(c1)) -> (F(c0))
+formula2: F c1 | F c2
+formula3: G( c2 -> X (! c2 U c3)) & (! c3 U c2) | G (! c3)
+num_symbols: 4
+max_length_traces: 10
+train_size_traces: 0.5
+mutually_exclusive_symbols: true
+cnn_model: untrained_CNN_ME_state_dict_4sym.pth
+hyperparameters:
+  batch_size: 64
+  learning_rate: 0.001
+  num_epochs: 20
+seed: 42

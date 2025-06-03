@@ -1,0 +1,20 @@
+experiment_id: experiment_responded-existenceabANDinita_3sym_5len
+formula1_name: Responded existence(c0,c1)
+formula2_name: Init(c1)
+formula3_name: ''
+formula1_index: 1
+formula2_index: 0
+formula3_index: null
+formula1: F c0 -> F c1
+formula2: c1
+formula3: ''
+num_symbols: 3
+max_length_traces: 5
+train_size_traces: 0.5
+mutually_exclusive_symbols: true
+cnn_model: untrained_CNN_ME_state_dict_3sym.pth
+hyperparameters:
+  batch_size: 64
+  learning_rate: 0.001
+  num_epochs: 20
+seed: 42
