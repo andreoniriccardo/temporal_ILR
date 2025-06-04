@@ -199,7 +199,7 @@ class AND(Formula):
 
         # Replace padding (-1.0) with 0, FALSE (-2.0) with 0, TRUE (2.0) with 1
         adjusted = torch.where(
-            truth_values == -1.0, 0.0,            # Replace padding with 0
+            truth_values == -1.0, 1.0,            # Replace padding with 1
             torch.where(
                 truth_values == -2.0, 0.0,        # Replace FALSE with 0
                 torch.where(
@@ -212,11 +212,7 @@ class AND(Formula):
         # Compute minimum along sequence dimension
         min_vals, _ = torch.min(adjusted, dim=1)
         
-        # Check if ALL elements were padding (-1.0)
-        all_pad_mask = torch.all(truth_values == -1.0, dim=1)
-        
-        # Replace output with -1.0 for fully padded sequences
-        final_output = torch.where(all_pad_mask, -1.0, min_vals)
+        final_output = min_vals
         
         self.forward_output = final_output.unsqueeze(1)
         return self.forward_output
@@ -297,11 +293,7 @@ class OR(Formula):
         # Compute maximum along sequence dimension
         max_vals, _ = torch.max(adjusted, dim=1)
         
-        # Check if ALL elements were padding (-1.0)
-        all_pad_mask = torch.all(truth_values == -1.0, dim=1)
-        
-        # Replace output with -1.0 for fully padded sequences
-        final_output = torch.where(all_pad_mask, -1.0, max_vals)
+        final_output = max_vals
         
         self.forward_output = final_output.unsqueeze(1)
         return self.forward_output
