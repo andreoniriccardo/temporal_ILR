@@ -52,7 +52,6 @@ def generate_sample_traces_sym_ME(
         padded_sequence = pad_sequence(sequences[i].unsqueeze(0), max_length_traces)
         padded_sequences.append(padded_sequence)
     padded_sequences_tensor = torch.cat(padded_sequences, dim=0)
-    # Appiattisco le sequenze
     padded_sequences_tensor = padded_sequences_tensor.flatten(start_dim=1)
     satisfaction_scores = formula.forward(padded_sequences_tensor)
     satisfaction = satisfaction_scores.squeeze().int().tolist()
@@ -82,7 +81,6 @@ def create_complete_traces_sym_NME(max_length_generated,
     n_symbols = len(alphabet)
 
     for length_traces in range(2, max_length_generated + 1):
-        # Generate all possible combinations for each step (2^n_symbols possibilities)
         possible_values = list(range(2 ** n_symbols))
         prod = product(possible_values, repeat=length_traces)
 
@@ -91,7 +89,6 @@ def create_complete_traces_sym_NME(max_length_generated,
 
             for step, true_literal in enumerate(trace):
                 for i in range(n_symbols):
-                    # Check if the ith bit is 0 (indicating symbol is present)
                     if (true_literal >> i) & 1 == 0:
                         t_t[step, i] = 1.0
 
@@ -127,27 +124,23 @@ def generate_sample_traces_sym_NME(
 
     sequences = []
 
-    # This is to weight more the probability of shorter traces (otherwise the longer traces are more likely)
     length_weights = np.exp(-0.5 * np.arange(2, max_length_traces+1))
     length_weights /= length_weights.sum()
 
     for _ in range(num_samples):
-        # Sample sequence length (minimum min_length_traces)
         seq_len = np.random.choice(
             np.arange(min_length_traces, max_length_traces+1),
             # p=length_weights # UNCOMMENT THIS TO WEIGHT LENGTHS
         )
         sequence = torch.zeros((seq_len, len(alphabet)), dtype=torch.float32)
 
-        for i in range(seq_len): # iterate over each row (timestep)
-            num_ones_in_row = np.random.choice([0, 1, 2]) # 0/1/2 concurrent symbol active
+        for i in range(seq_len): 
+            num_ones_in_row = np.random.choice([0, 1, 2]) 
 
             if num_ones_in_row == 1:
-                # one random symbol is set to 1
                 active_symbol_idx = torch.randint(0, len(alphabet), (1,))
                 sequence[i, active_symbol_idx] = 1.0
             elif num_ones_in_row == 2:
-                # two random symbols are set to 1
                 indices = torch.randperm(len(alphabet))[:2]
                 sequence[i, indices] = 1.0
 
@@ -163,12 +156,9 @@ def generate_sample_traces_sym_NME(
         padded_sequence = pad_sequence(sequences[i].unsqueeze(0), max_length_traces)
         padded_sequences.append(padded_sequence)
     padded_sequences_tensor = torch.cat(padded_sequences, dim=0)
-    # Appiattisco le sequenze
     padded_sequences_tensor = padded_sequences_tensor.flatten(start_dim=1)
     satisfaction_scores = formula.forward(padded_sequences_tensor)
-    # print(satisfaction_scores)
     satisfaction = satisfaction_scores.squeeze().int().tolist()
-    # print(satisfaction)
 
     # Split
     split_idx = int(len(sequences) * train_size)
@@ -196,7 +186,6 @@ def create_image_sequence_dataset_sampling_ME(image_data,
     for label in range(numb_of_classes):
         indices = image_data.targets == label
         class_images.append(image_data.data[indices])
-    # Check if images are missing for a given class
     for idx, imgs in enumerate(class_images):
         if len(imgs) == 0:
             raise ValueError(f"No images found for class {idx}")
@@ -206,7 +195,6 @@ def create_image_sequence_dataset_sampling_ME(image_data,
 
     for _ in range(num_passes):
         if shuffle:
-            # Suffle traces and acceptance labels (together)
             combined = list(zip(traces, acceptance))
             random.shuffle(combined)
             shuffled_traces, shuffled_acceptance = zip(*combined)
@@ -219,10 +207,8 @@ def create_image_sequence_dataset_sampling_ME(image_data,
             sequence = torch.zeros((seq_len, channels, pixels_h, pixels_v), dtype=torch.float32)
 
             for step in range(seq_len):
-                # Get active symbol
                 symbol_idx = torch.argmax(trace[step]).item()
 
-                # Random selection of image of this class
                 class_pool = class_images[symbol_idx]
                 random_idx = random.randint(0, len(class_pool) - 1)
                 sequence[step] = class_pool[random_idx]
@@ -243,15 +229,12 @@ def create_image_sequence_dataset_sampling_NME(image_data, numb_of_classes, trac
     channels = 1
     pixels_h, pixels_v = image_data.data[0].size()
 
-    # how_many = []
     data_for_classes = []
     for label in range(numb_of_classes):
         indices_i = image_data.targets == label
         data_i, target_i = image_data.data[indices_i], image_data.targets[indices_i]
-        # how_many.append(len(data_i))
         data_for_classes.append(data_i)
 
-    # num_of_images = sum(how_many)
 
     image_sequences = []
     symbolic_sequences = []
@@ -259,7 +242,6 @@ def create_image_sequence_dataset_sampling_NME(image_data, numb_of_classes, trac
 
     for _ in range(num_passes):
         if shuffle:
-            # Suffle traces and acceptance labels (together)
             combined = list(zip(traces, acceptance))
             random.shuffle(combined)
             shuffled_traces, shuffled_acceptance = zip(*combined)

@@ -33,8 +33,6 @@ class LTL_grounding:
         self.ltl_formula_string = ltl_formula
         self.dfa = dfa
         self.mutually_exclusive = mutex
-        #save the dfa image
-        # self.dfa.to_graphviz().render("Automas/"+self.ltl_formula_string)
 
         self.numb_of_symbols = C
         self.length_traces = T

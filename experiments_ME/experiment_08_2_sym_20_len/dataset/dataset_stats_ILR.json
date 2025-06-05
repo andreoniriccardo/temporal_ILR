@@ -1,0 +1,18 @@
+{
+    "train": {
+        "sym_traces_tot": 500,
+        "sym_traces_unique": 433,
+        "img_seq_tot": 2500,
+        "img_seq_accepting": 320,
+        "img_seq_accepting_ratio": 0.128
+    },
+    "test": {
+        "sym_traces_tot": 500,
+        "sym_traces_unique": 408,
+        "img_seq_tot": 2500,
+        "img_seq_accepting": 325,
+        "img_seq_accepting_ratio": 0.13
+    },
+    "NUM_PASSES_IMG": 5,
+    "NUM_SAMPLES": 1000
+}

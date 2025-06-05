@@ -56,7 +56,6 @@ class FuzzyAutoma(nn.Module):
         for s in self.dfa.keys():
             for sym in self.dfa[s].keys():
                 nxt_stt[self.dfa[s][sym]] += conjunction(state[s], action[sym])
-                #print("conj fra state={} and sym={} è {} e viene scritta in {}".format(s, sym, c, self.dfa[s][sym]))
         #return F.softmax(nxt_stt, dim=0)
         return nxt_stt
 
@@ -84,22 +83,12 @@ class FuzzyAutoma_non_mutex(nn.Module):
         for s in self.dfa.keys():
             for sym in self.dfa[s].keys():
                 action_guard = recursive_guard_evaluation(sym, action)
-                #print(action_guard)
-                #print(self.dfa[s][sym])
                 vvv = conjunction(state[s], action_guard)
-                #print(vvv)
 
                 nxt_stt[self.dfa[s][sym]] += vvv
-                #print("conj fra state={} and sym={} è {} è {} e viene scritta in {}".format(s, sym, action_guard, vvv, self.dfa[s][sym]))
-                #print("nxt state : ", nxt_stt)
-                #print("sftmx of nxt state : ",F.softmax(nxt_stt, dim=0))
-        #return F.softmax(nxt_stt, dim=0)
         return nxt_stt
 
-#input : String
-#return: [argument1 , argument 2, .. , argument n ]
 def divide_args_n(guard):
-    #print("guard: ", guard)
     args = guard.split(',')
     done = False
     args_str = []
@@ -115,11 +104,7 @@ def divide_args_n(guard):
     return args_str
 
 
-#guard : String
-#action_prob: Tensor
 def recursive_guard_evaluation(guard, action):
-    #print("guard: ", guard)
-    #and
     if guard[0] == 'a':
 
         guard = guard[4:-1]
@@ -173,13 +158,10 @@ def recurrent_write_guard( guard):
             string_g += ")"
             return string_g
         if str(type(guard)) == "Not":
-            #Nota: non funziona se metto in not fomule più lunghe del singolo simbolo
             arg = str(guard)[2:]
 
             return "not({})".format(arg)
         if str(type(guard)) == "<class 'sympy.core.symbol.Symbol'>":
-            #print(str(guard))
-            #print(str(guard)[1:])
             return str(guard)[1:]
         if str(type(guard)) == "<class 'sympy.logic.boolalg.BooleanTrue'>":
             return 'T'

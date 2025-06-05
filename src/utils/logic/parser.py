@@ -29,7 +29,6 @@ class LTLfTransformer(Transformer):
     def __init__(self, sequence_len, activities, predicates):
         """Initialize."""
         super().__init__()
-        # self._pl_transformer = PLTransformer()
         self.sequence_len = sequence_len
         self.predicates = predicates
 
@@ -108,7 +107,6 @@ class LTLfTransformer(Transformer):
             return args[0]
         if (len(args) - 1) % 2 == 0:
             subformulas = args[::2]
-            # print(subformulas)
             return LTLfUntil(subformulas)
         raise ValueError("Parsing error.")
     
@@ -132,17 +130,6 @@ class LTLfTransformer(Transformer):
     
     def ltlf_weak_until(self, args):
         """Parse LTLf Until."""
-        # NB: non ancora implementato nel parser
-        # per implementarlo inserire
-        # WEAK_UNTIL.2: /WU(?=[^a-z]|$)/
-        # sotto riga 36 in ltlf.lark
-
-        # e modificare così la riga 9
-        # ?ltlf_release:     ltlf_weak_until (RELEASE ltlf_weak_until)*
-        # aggiungere questo a riga 10
-        # ?ltlf_weak_until:     ltlf_unaryop (RELEASE ltlf_unaryop)*
-
-        # testare se funziona correttamente
 
         if len(args) == 1:
             return args[0]
@@ -163,7 +150,6 @@ class LTLfTransformer(Transformer):
 
     def ltlf_symbol(self, args):
         """Parse LTLf Symbol."""
-        # check_(len(args) == 1)
         token = args[0]
         symbol = str(token)
         return LTLfProposition(symbol)    
@@ -199,7 +185,6 @@ class LTLfParser:
         
         self._transformer = LTLfTransformer(self.sequence_len, self.activities, self.predicates)
         self._parser = Lark(
-            # _ltlf_parser_lark, parser="lalr", import_paths=[PARSERS_DIRECTORY]
             _ltlf_parser_lark, parser="lalr", import_paths=[str(CURRENT_SCRIPT_DIR / "parser")]
         )
 

@@ -23,22 +23,17 @@ def pad_sequence(sym_sequences, max_len):
 def eval_image_classification_from_traces_ME(traces_images, traces_labels, classifier, mutually_exclusive):
     classifier.eval()
     with torch.no_grad():
-        # Take the first len(traces_labels) elements from traces_images to align with labels
         images_list = traces_images[:len(traces_labels)]
         labels_list = traces_labels
 
-        # Concatenate all images and labels into single tensors
         images = torch.cat(images_list, dim=0).to(device)
         labels = torch.cat(labels_list, dim=0).to(device)
 
-        # Get predictions from the classifier
         preds = classifier(images)
 
-         # Since mutually_exclusive is always True, compute argmax for predictions and labels
         pred_labels = preds.argmax(dim=1, keepdim=True)
         true_labels = labels.argmax(dim=1, keepdim=True)
 
-        # Calculate correct predictions and total number
         correct = (pred_labels == true_labels).sum().item()
         total = true_labels.size(0)
         
@@ -56,7 +51,6 @@ def eval_image_classification_from_traces_NME(
     
     if not mutually_exclusive:
         
-        # --- Logic for mutually_exclusive=False ---
         total_symbol_predictions = 0
         correct_symbol_predictions = 0
 
@@ -77,12 +71,8 @@ def eval_image_classification_from_traces_NME(
                 y2 = torch.zeros_like(pred_sym_probabilities)
                 output_sym_binarized = torch.where(pred_sym_probabilities > 0.5, y1, y2)
 
-
-                # Overall micro-averaged accuracy calculation
                 correct_symbol_predictions += torch.sum(output_sym_binarized == t_sym_truth_multi_hot).item()
                 total_symbol_predictions += t_sym_truth_multi_hot.numel() 
-
-
 
         if total_symbol_predictions == 0:
             overall_accuracy = 0.0
@@ -96,10 +86,9 @@ class LogicalNetwork(nn.Module):
     def __init__(self, nn_layer, formula, data, symbolic_dataset, lr, batch_size, seq_max_len, mutex, w=1.0, schedule=1.0, max_iterations_lrl=10):
         super(LogicalNetwork, self).__init__()
         self.nn_layer = nn_layer # Perception layer: CNN
-        self.formula = formula.to(device) # Logical formula unraveled for the maximum sequence length
+        self.formula = formula.to(device)
         self.seq_max_len = seq_max_len
 
-        # self.w = w # Probabilmente non mi serve più perché uso il label al suo posto
         self.convergence_condition = 1e-4
         self.schedule = schedule
         self.max_iterations_lrl = max_iterations_lrl
@@ -113,7 +102,6 @@ class LogicalNetwork(nn.Module):
         
         self.train_traces, self.test_traces, train_acceptance_tr, test_acceptance_tr = symbolic_dataset
 
-        # Training hyperparameters
         self.lr = lr
         self.batch_size = batch_size
 
@@ -131,16 +119,15 @@ class LogicalNetwork(nn.Module):
         self.nn_layer.to(device)
         print("_____________training the classifier_____________")
         self.nn_layer.train()
-        optimizer = torch.optim.Adam(params=self.nn_layer.parameters(), lr=self.lr) # originally lr=0.001
-        batch_size = self.batch_size # originally 64
+        optimizer = torch.optim.Adam(params=self.nn_layer.parameters(), lr=self.lr)
+        batch_size = self.batch_size
         tot_size = len(self.train_img_seq)
 
-        # Metriche da salvare
         loss_list = []
         train_image_classification_accuracy_list = []
         test_image_classification_accuracy_list = []
         time_list = []
-        time_logical_list = [] # Just the time of the logical layer, excluding the perception layer
+        time_logical_list = [] 
         time_perception_list = []
 
         start_time = time.time()
@@ -149,7 +136,6 @@ class LogicalNetwork(nn.Module):
         for epoch in range(num_of_epochs):
             print("epoch: ", epoch)
             for b in range(math.floor(tot_size/batch_size)):
-                # print("batch: ", b)
                 start = batch_size*b
                 end = min(batch_size*(b+1), tot_size)
                 batch_image_dataset = self.train_img_seq[start:end]
@@ -158,25 +144,49 @@ class LogicalNetwork(nn.Module):
 
                 optimizer.zero_grad()
 
-                # Passo alla CNN ogni sequenza individualmente
-                # Effettuo il padding alle sequenze simboliche (output della CNN) e concateno
                 elapsed_time_perception = 0.
                 batch_symbolic = []
                 for i in range(len(batch_image_dataset)):
                     start_time_perception = time.time() 
-                    sym_sequence = self.nn_layer(batch_image_dataset[i].to(device)) # [sequence_len, num_symbols]
+                    sym_sequence = self.nn_layer(batch_image_dataset[i].to(device)) 
                     elapsed_time_perception += time.time() - start_time_perception
-                    sym_sequence_padded = pad_sequence(sym_sequence.unsqueeze(0), self.seq_max_len) # [1, max_sequence_len, num_symbols]
+                    sym_sequence_padded = pad_sequence(sym_sequence.unsqueeze(0), self.seq_max_len)
                     batch_symbolic.append(sym_sequence_padded)
-                batch_symbolic_tensor = torch.cat(batch_symbolic, dim=0).to(device) # [batch_size, max_sequence_len, num_symbols]
+                batch_symbolic_tensor = torch.cat(batch_symbolic, dim=0).to(device)                
                 original_batch_symbolic_tensor_shape = batch_symbolic_tensor.shape
-                # Appiattisco le sequenze
-                batch_symbolic_tensor = batch_symbolic_tensor.flatten(start_dim=1) # [batch_size, max_sequence_len * num_symbols]
+                batch_symbolic_tensor = batch_symbolic_tensor.flatten(start_dim=1) 
+                y = torch.zeros((batch_symbolic_tensor.size(0), 1))
+                batch_symbolic_tensor = torch.cat((batch_symbolic_tensor, y), dim=1)
 
                 start_time_logical = time.time()
-                satisfaction = self.formula.forward(batch_symbolic_tensor)
+                target_k = 1.
+                # satisfaction = self.formula.forward(batch_symbolic_tensor)
+                # for j in range(self.max_iterations_lrl):
+                # for j in range(1):
+                satisfaction = self.formula.forward(batch_symbolic_tensor) # [batch_size, 1]
+                    # tengo 1 iterazione minima
+                    # if (j != 0) and ((target - satisfaction).abs().max() < self.convergence_condition):
+                    #     break
+                    # print('label:', target[:5])
+                    # print('satisfaction:', satisfaction[:5])
+                active_mask = (target_k - satisfaction).abs() > self.convergence_condition # [batch_size, 1]
+                    # print('active_mask:', active_mask[:5])
+                delta_sat = torch.where(
+                    active_mask,
+                    (target_k - satisfaction).double() * self.schedule,
+                    0.).float() # [batch_size, 1]
+                    # print('delta_sat:', delta_sat[:5])
+                self.formula.backward(delta_sat)
+                delta_tensor = self.formula.get_delta_tensor(batch_symbolic_tensor, 'max') # [batch_size, max_sequence_len * num_symbols]
+                batch_symbolic_tensor = torch.clip(batch_symbolic_tensor + delta_tensor, min=0.0, max=1.0)
                 
-                loss = nn.BCELoss()(satisfaction.float(), target)
+                y_refined = batch_symbolic_tensor[:, -1]
+                # print(y_refined.shape)
+                
+                # loss = nn.BCELoss()(satisfaction.float(), target)
+                # print(y_refined)
+                # print(target)
+                loss = nn.BCELoss()(y_refined.unsqueeze(1), target)
 
                 elapsed_time_logical = time.time() - start_time_logical
                 loss.backward()
@@ -195,7 +205,6 @@ class LogicalNetwork(nn.Module):
             print("IMAGE CLASSIFICATION: train accuracy : {}\ttest accuracy : {}".format(train_image_classification_accuracy,test_image_classification_accuracy))
             # Time
             elapsed_time = time.time() - start_time
-            print(f"Elapsed time: {elapsed_time}. Logical/Perception layer time per epoch: {elapsed_time_logical}/{elapsed_time_perception}")
 
             loss_list.append(loss)
             train_image_classification_accuracy_list.append(train_image_classification_accuracy)

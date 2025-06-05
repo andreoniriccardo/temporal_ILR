@@ -63,6 +63,3 @@ formulas_names.append("Chain succession(_a,_b)")
 #exclusive choice
 formulas.append('(F a | F b) & ! (F a & F b)')
 formulas_names.append("Exclusive choice(_a,_b)")
-# RA: response(a, b) AND precedence(a, c2)
-# formulas.append('G( a -> F b) & ((! c2 U a) | G (! c2))')
-# formulas_names.append("Response(a,b) AND Precedence(a,c2)")

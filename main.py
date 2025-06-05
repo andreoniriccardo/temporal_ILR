@@ -7,12 +7,12 @@ from src.utils.create_dataset import generate_sample_traces_sym_ME, generate_sam
 from src.utils.logic.parser import LTLfParser as LTLfParserPL
 
 
-settings = {"ME": False, # Mutually Exclusive setting
+settings = {"ME": True, # Mutually Exclusive setting
                "NME": True # Non-mutually Exclusive setting
                }
 methods = {
-    "ILR": False,
-    "DFA_baseline": True,
+    "ILR": True,
+    "DFA_baseline": False,
     }
 
 

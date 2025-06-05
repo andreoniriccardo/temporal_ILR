@@ -1,6 +1,5 @@
 import torchvision
 from flloat.parser.ltlf import LTLfParser
-# from Classifier import CNN
 import sys
 import os
 from LTL_grounding import LTL_grounding
@@ -79,6 +78,7 @@ print("Formula: ", formula)
 # Dataset creation
 from threading import Thread, Event
 
+# Timeout for possible long execution time of the DFA generation
 class TimeoutBlock:
     def __init__(self, timeout_seconds, timeout_file):
         self.timeout_seconds = timeout_seconds
@@ -97,8 +97,6 @@ class TimeoutBlock:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.completed.set()
         return False
-        # if self.timed_out:
-        #     return True  # Suppress exceptions if timed out
 
     def _monitor_timeout(self):
         while not self.completed.is_set():
@@ -153,20 +151,18 @@ for t in test_traces:
 
 dataset_stats = {
     "train": {
-        "sym_traces_tot": len(train_traces), # Number of symbolic traces
-        "sym_traces_unique": len(unique_train_traces), # Number of unique symbolic traces
-        "img_seq_tot": len(train_img_seq), # Number of image sequences
-        # "img_seq_unique": len(unique_train_traces), # Number of unique image sequences
-        "img_seq_accepting": sum(train_acceptance_img), # Number of accepting image sequences
-        "img_seq_accepting_ratio": sum(train_acceptance_img) / len(train_img_seq) # Acceptance ratio
+        "sym_traces_tot": len(train_traces),
+        "sym_traces_unique": len(unique_train_traces),
+        "img_seq_tot": len(train_img_seq),
+        "img_seq_accepting": sum(train_acceptance_img), 
+        "img_seq_accepting_ratio": sum(train_acceptance_img) / len(train_img_seq) 
     },
     "test": {
-        "sym_traces_tot": len(test_traces), # Number of symbolic traces
-        "sym_traces_unique": len(unique_test_traces), # Number of unique symbolic traces
-        "img_seq_tot": len(test_img_seq), # Number of image sequences
-        # "img_seq_unique": len(unique_test_traces), # Number of unique image sequences
-        "img_seq_accepting": sum(test_acceptance_img), # Number of accepting image sequences
-        "img_seq_accepting_ratio": sum(test_acceptance_img) / len(test_img_seq) # Acceptance ratio
+        "sym_traces_tot": len(test_traces),
+        "sym_traces_unique": len(unique_test_traces),
+        "img_seq_tot": len(test_img_seq), 
+        "img_seq_accepting": sum(test_acceptance_img), 
+        "img_seq_accepting_ratio": sum(test_acceptance_img) / len(test_img_seq)
     },
     "NUM_PASSES_IMG": NUM_PASSES_IMG,
     "NUM_SAMPLES": NUM_SAMPLES
@@ -174,8 +170,6 @@ dataset_stats = {
 
 with open(f"{EXPERIMENTS_FOLDER}/{experiment_name}/dataset/dataset_stats_DFA.json", "w") as f:
     json.dump(dataset_stats, f, indent=4)
-with open(f"{EXPERIMENTS_FOLDER}/{experiment_name}/dataset/symbolic_dataset_DFA.pickle", "wb") as f:
-    pickle.dump(symbolic_dataset, f)
 
 # Model
 ltl_ground =LTL_grounding(formula,dfa, config.mutually_exclusive_symbols, symbolic_dataset, image_seq_dataset, config.num_symbols, 100, config.max_length_traces, train_with_accepted_only=False, num_exp=0, log_dir="",
@@ -183,21 +177,15 @@ ltl_ground =LTL_grounding(formula,dfa, config.mutually_exclusive_symbols, symbol
                           lr=config.hyperparameters["learning_rate"], 
                           batch_size=config.hyperparameters["batch_size"])
 
-print("Weight sum: ", ltl_ground.classifier.state_dict()['conv1.weight'].sum())
 
 loss_list, train_image_classification_accuracy_list, test_image_classification_accuracy_list, time_list = ltl_ground.train_classifier(config.hyperparameters["num_epochs"])
 
 # Save results
-plot_metrics(loss_list, 
-            train_image_classification_accuracy_list,
-            test_image_classification_accuracy_list,
-            config.experiment_id,
-            f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_old.png")
 save_results(loss_list,
               train_image_classification_accuracy_list,
                 test_image_classification_accuracy_list, 
                 time_list,
-                f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_old.json")
+                f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_DFA.json")
 
 # Save model
-save_model(ltl_ground.classifier, f"{EXPERIMENTS_FOLDER}/{experiment_name}/checkpoints/model_old.pth")
+save_model(ltl_ground.classifier, f"{EXPERIMENTS_FOLDER}/{experiment_name}/checkpoints/model_DFA.pth")

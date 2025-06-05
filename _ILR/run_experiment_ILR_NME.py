@@ -24,7 +24,7 @@ sys.path.insert(0, src_path)
 
 from configs.global_config import DATA_FOLDER, MODELS_FOLDER
 from utils.logic.parser import LTLfParser as LTLfParserPL
-from utils.save_results import plot_metrics, save_results 
+from utils.save_results import save_results 
 from utils.save_model import save_model
 from utils.image_normalization import normalize_image_sequences_pytorch
 from utils.create_dataset import create_image_sequence_dataset_sampling_NME
@@ -35,12 +35,10 @@ EXPERIMENTS_FOLDER = '../experiments_NME'
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("--experiment_name", type=str, required=True)
-# arg_parser.add_argument("--num_samples", type=int, required=True)
 arg_parser.add_argument("--num_passes_img", type=int, required=True)
 args = arg_parser.parse_args()
 
 experiment_name = args.experiment_name
-# NUM_SAMPLES = args.num_samples
 NUM_PASSES_IMG = args.num_passes_img
 
 
@@ -92,12 +90,11 @@ train_traces, test_traces, train_acceptance_tr, test_acceptance_tr = symbolic_da
 
 
 # Seed
-config.seed = 21
-torch.manual_seed(config.seed)
-torch.random.manual_seed(config.seed)
-np.random.seed(config.seed)
-torch.cuda.manual_seed(config.seed)
-random.seed(config.seed)
+# torch.manual_seed(config.seed)
+# torch.random.manual_seed(config.seed)
+# np.random.seed(config.seed)
+# torch.cuda.manual_seed(config.seed)
+# random.seed(config.seed)
 
 # Formula PL
 parserPL = LTLfParserPL(config.max_length_traces, alphabet)
@@ -135,20 +132,18 @@ for t in test_traces:
 
 dataset_stats = {
     "train": {
-        "sym_traces_tot": len(train_traces), # Number of symbolic traces
-        "sym_traces_unique": len(unique_train_traces), # Number of unique symbolic traces
-        "img_seq_tot": len(train_img_seq), # Number of image sequences
-        # "img_seq_unique": len(unique_train_traces), # Number of unique image sequences
-        "img_seq_accepting": sum(train_acceptance_img), # Number of accepting image sequences
-        "img_seq_accepting_ratio": sum(train_acceptance_img) / len(train_img_seq) # Acceptance ratio
+        "sym_traces_tot": len(train_traces),
+        "sym_traces_unique": len(unique_train_traces), 
+        "img_seq_tot": len(train_img_seq), 
+        "img_seq_accepting": sum(train_acceptance_img),
+        "img_seq_accepting_ratio": sum(train_acceptance_img) / len(train_img_seq) 
     },
     "test": {
-        "sym_traces_tot": len(test_traces), # Number of symbolic traces
-        "sym_traces_unique": len(unique_test_traces), # Number of unique symbolic traces
-        "img_seq_tot": len(test_img_seq), # Number of image sequences
-        # "img_seq_unique": len(unique_test_traces), # Number of unique image sequences
-        "img_seq_accepting": sum(test_acceptance_img), # Number of accepting image sequences
-        "img_seq_accepting_ratio": sum(test_acceptance_img) / len(test_img_seq) # Acceptance ratio
+        "sym_traces_tot": len(test_traces),
+        "sym_traces_unique": len(unique_test_traces),
+        "img_seq_tot": len(test_img_seq), 
+        "img_seq_accepting": sum(test_acceptance_img), 
+        "img_seq_accepting_ratio": sum(test_acceptance_img) / len(test_img_seq) 
     }
 }
 
@@ -176,22 +171,16 @@ logical_nn = LogicalNetwork(classifier,
                             schedule=0.1,
                             max_iterations_lrl=1)
 
-print("Weight sum: ", classifier.state_dict()['conv1.weight'].sum())
 
 loss_list, train_image_classification_accuracy_list, test_image_classification_accuracy_list, time_list = logical_nn.train_classifier(config.hyperparameters["num_epochs"])
 
 # Save results
-plot_metrics(loss_list, 
-            train_image_classification_accuracy_list,
-            test_image_classification_accuracy_list,
-            config.experiment_id,
-            f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_lrl.png")
 save_results(loss_list,
               train_image_classification_accuracy_list,
                 test_image_classification_accuracy_list, 
                 time_list,
-                f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_lrl.json")
+                f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_ILR.json")
 
 
 # Save model
-save_model(logical_nn.nn_layer, f"{EXPERIMENTS_FOLDER}/{experiment_name}/checkpoints/model_lrl.pth")
+save_model(logical_nn.nn_layer, f"{EXPERIMENTS_FOLDER}/{experiment_name}/checkpoints/model_ILR.pth")

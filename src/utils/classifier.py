@@ -32,7 +32,6 @@ class CNN_NME(nn.Module):
         self.conv2 = nn.Conv2d(3, 6, 7, stride=2)
         self.fc1 = nn.Linear(nodes_linear, classes)
         
-        # Better initialization
         nn.init.kaiming_normal_(self.fc1.weight, 
                               mode='fan_out', 
                               nonlinearity='relu')

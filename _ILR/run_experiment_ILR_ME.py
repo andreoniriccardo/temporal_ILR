@@ -22,7 +22,8 @@ sys.path.insert(0, src_path)
 
 from configs.global_config import DATA_FOLDER, MODELS_FOLDER
 from utils.logic.parser import LTLfParser as LTLfParserPL
-from utils.save_results import plot_metrics, save_results 
+from utils.logic.formula import Predicate, IMPLIES
+from utils.save_results import save_results 
 from utils.save_model import save_model
 from utils.create_dataset import create_image_sequence_dataset_sampling_ME
 from utils.classifier import CNN_ME
@@ -97,6 +98,8 @@ train_traces, test_traces, train_acceptance_tr, test_acceptance_tr = symbolic_da
 parserPL = LTLfParserPL(config.max_length_traces, alphabet)
 f = parserPL(formula)
 f_pl = f.to_propositional(parserPL.predicates, config.max_length_traces, 0)
+y1 = Predicate('y1', config.max_length_traces*config.num_symbols)
+k = IMPLIES([f_pl, y1])
 
 
 train_img_seq, train_acceptance_img = create_image_sequence_dataset_sampling_ME(train_data, 
@@ -127,20 +130,18 @@ for t in test_traces:
 
 dataset_stats = {
     "train": {
-        "sym_traces_tot": len(train_traces), # Number of symbolic traces
-        "sym_traces_unique": len(unique_train_traces), # Number of unique symbolic traces
-        "img_seq_tot": len(train_img_seq), # Number of image sequences
-        # "img_seq_unique": len(unique_train_traces), # Number of unique image sequences
-        "img_seq_accepting": sum(train_acceptance_img), # Number of accepting image sequences
-        "img_seq_accepting_ratio": sum(train_acceptance_img) / len(train_img_seq) # Acceptance ratio
+        "sym_traces_tot": len(train_traces),
+        "sym_traces_unique": len(unique_train_traces), 
+        "img_seq_tot": len(train_img_seq), 
+        "img_seq_accepting": sum(train_acceptance_img),
+        "img_seq_accepting_ratio": sum(train_acceptance_img) / len(train_img_seq) 
     },
     "test": {
-        "sym_traces_tot": len(test_traces), # Number of symbolic traces
-        "sym_traces_unique": len(unique_test_traces), # Number of unique symbolic traces
-        "img_seq_tot": len(test_img_seq), # Number of image sequences
-        # "img_seq_unique": len(unique_test_traces), # Number of unique image sequences
-        "img_seq_accepting": sum(test_acceptance_img), # Number of accepting image sequences
-        "img_seq_accepting_ratio": sum(test_acceptance_img) / len(test_img_seq) # Acceptance ratio
+        "sym_traces_tot": len(test_traces),
+        "sym_traces_unique": len(unique_test_traces),
+        "img_seq_tot": len(test_img_seq), 
+        "img_seq_accepting": sum(test_acceptance_img), 
+        "img_seq_accepting_ratio": sum(test_acceptance_img) / len(test_img_seq) 
     },
     "NUM_PASSES_IMG": NUM_PASSES_IMG,
     "NUM_SAMPLES": NUM_SAMPLES
@@ -161,7 +162,8 @@ data = image_seq_dataset
 classifier = CNN_ME(num_channels, num_classes, nodes_linear, mutually_exc=config.mutually_exclusive_symbols)
 classifier.load_state_dict(torch.load(f"{MODELS_FOLDER}/{config.cnn_model}", weights_only=True))
 logical_nn = LogicalNetwork(classifier, 
-                            formula, 
+                            k,
+                            # formula, 
                             data=data, 
                             symbolic_dataset=symbolic_dataset, 
                             lr=config.hyperparameters["learning_rate"],
@@ -169,22 +171,16 @@ logical_nn = LogicalNetwork(classifier,
                             seq_max_len=config.max_length_traces,
                             mutex=config.mutually_exclusive_symbols)
 
-print("Weight sum: ", classifier.state_dict()['conv1.weight'].sum())
 
 loss_list, train_image_classification_accuracy_list, test_image_classification_accuracy_list, time_list = logical_nn.train_classifier(config.hyperparameters["num_epochs"])
 
 # Save results
-plot_metrics(loss_list, 
-            train_image_classification_accuracy_list,
-            test_image_classification_accuracy_list,
-            config.experiment_id,
-            f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_lrl.png")
 save_results(loss_list,
               train_image_classification_accuracy_list,
                 test_image_classification_accuracy_list, 
                 time_list,
-                f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_lrl.json")
+                f"{EXPERIMENTS_FOLDER}/{experiment_name}/results/metrics_ILR.json")
 
 
 # Save model
-save_model(logical_nn.nn_layer, f"{EXPERIMENTS_FOLDER}/{experiment_name}/checkpoints/model_lrl.pth")
+save_model(logical_nn.nn_layer, f"{EXPERIMENTS_FOLDER}/{experiment_name}/checkpoints/model_ILR.pth")

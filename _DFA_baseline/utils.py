@@ -104,22 +104,17 @@ def eval_acceptance(classifier, automa, final_states, dfa, alphabet, dataset, au
 def eval_image_classification_from_traces_ME(traces_images, traces_labels, classifier, mutually_exclusive):
     classifier.eval()
     with torch.no_grad():
-        # Take the first len(traces_labels) elements from traces_images to align with labels
         images_list = traces_images[:len(traces_labels)]
         labels_list = traces_labels
 
-        # Concatenate all images and labels into single tensors
         images = torch.cat(images_list, dim=0).to(device)
         labels = torch.cat(labels_list, dim=0).to(device)
 
-        # Get predictions from the classifier
         preds = classifier(images)
 
-         # Since mutually_exclusive is always True, compute argmax for predictions and labels
         pred_labels = preds.argmax(dim=1, keepdim=True)
         true_labels = labels.argmax(dim=1, keepdim=True)
 
-        # Calculate correct predictions and total number
         correct = (pred_labels == true_labels).sum().item()
         total = true_labels.size(0)
         
@@ -137,7 +132,6 @@ def eval_image_classification_from_traces_NME(
     
     if not mutually_exclusive:
         
-        # --- Logic for mutually_exclusive=False ---
         total_symbol_predictions = 0
         correct_symbol_predictions = 0
 
@@ -158,8 +152,6 @@ def eval_image_classification_from_traces_NME(
                 y2 = torch.zeros_like(pred_sym_probabilities)
                 output_sym_binarized = torch.where(pred_sym_probabilities > 0.5, y1, y2)
 
-
-                # Overall micro-averaged accuracy calculation
                 correct_symbol_predictions += torch.sum(output_sym_binarized == t_sym_truth_multi_hot).item()
                 total_symbol_predictions += t_sym_truth_multi_hot.numel() 
 

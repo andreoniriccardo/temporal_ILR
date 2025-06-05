@@ -10,7 +10,6 @@ class LTLfProposition(LTLfNode):
 
     def to_propositional(self, predicates, sequence_len, current_time):
         return predicates[f"{self.name}_{current_time}"]
-        # return PropositionAtTime(self.name, current_time)
 
 class LTLfNegation(LTLfNode):
     def __init__(self, formula):
@@ -33,7 +32,7 @@ class LTLfOr(LTLfNode):
         converted = [f.to_propositional(predicates, sequence_len, current_time) for f in self.subformulas]
         return OR(converted)
 
-# implementazione implicazione come A -> B = ¬A v B
+# material implication A -> B = ¬A v B
 class LTLfImplication(LTLfNode):
     def __init__(self, subformulas):
         self.left = subformulas[0]
@@ -43,9 +42,7 @@ class LTLfImplication(LTLfNode):
         converted_right = self.right.to_propositional(predicates, sequence_len, current_time)
         return OR([NOT(converted_left), converted_right])
 
-# implementazione implicazione come:
-# - se A > B: B
-# - se A <= B: 1
+
 # class LTLfImplication(LTLfNode):
 #     def __init__(self, subformulas):
 #         self.left = subformulas[0]
@@ -71,10 +68,7 @@ class LTLfAlways(LTLfNode):
         subformulas = []
         for t in range(current_time, sequence_len):
             subformula = self.formula.to_propositional(predicates, sequence_len, t)
-            # print(t)
-            # print(subformula.get_name())
             subformulas.append(subformula)
-        # return AND(subformulas) if subformulas else AND([])
         if subformulas:
             return AND(subformulas)
         else:
@@ -87,15 +81,12 @@ class LTLfEventually(LTLfNode):
         subformulas = []
         for t in range(current_time, sequence_len):
             subformula = self.formula.to_propositional(predicates, sequence_len, t)
-            # print(t)
-            # print(subformula.get_name())
             subformulas.append(subformula)
-        # return AND(subformulas) if subformulas else AND([])
         if subformulas:
             return OR(subformulas)
         else:
             raise ValueError("No argument give.")
-        
+
 class LTLfUntil(LTLfNode):
     def __init__(self, subformulas):
         self.left = subformulas[0]
@@ -107,7 +98,8 @@ class LTLfUntil(LTLfNode):
         converted_right = self.right.to_propositional(predicates, sequence_len, current_time)
 
         if current_time == sequence_len - 1:
-            return converted_right
+            # return converted_right
+            return OR([converted_right, FALSE()]) 
         
         converted_left = self.left.to_propositional(predicates, sequence_len, current_time)
         until_next = LTLfUntil([self.left, self.right]).to_propositional(predicates, sequence_len, current_time + 1)
@@ -119,7 +111,6 @@ class LTLfRelease(LTLfNode):
         self.left = subformulas[0]
         self.right = subformulas[1]
     def to_propositional(self, predicates, sequence_len, current_time):
-        # a R b ≡ ¬(¬a U ¬b)
         neg_left = LTLfNegation(self.left)
         neg_right = LTLfNegation(self.right)
         until_formula = LTLfUntil([neg_left, neg_right])
@@ -144,9 +135,6 @@ class LTLfWeakUntil(LTLfNode):
             return TRUE()
         
         converted_right = self.right.to_propositional(predicates, sequence_len, current_time)
-
-        # if current_time == sequence_len - 1:
-        #     return converted_right
         
         converted_left = self.left.to_propositional(predicates, sequence_len, current_time)
         until_next = LTLfWeakUntil([self.left, self.right]).to_propositional(predicates, sequence_len, current_time + 1)
