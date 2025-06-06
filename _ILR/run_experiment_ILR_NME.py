@@ -24,6 +24,7 @@ sys.path.insert(0, src_path)
 
 from configs.global_config import DATA_FOLDER, MODELS_FOLDER
 from utils.logic.parser import LTLfParser as LTLfParserPL
+from utils.logic.formula import Predicate, IMPLIES
 from utils.save_results import save_results 
 from utils.save_model import save_model
 from utils.image_normalization import normalize_image_sequences_pytorch
@@ -90,16 +91,18 @@ train_traces, test_traces, train_acceptance_tr, test_acceptance_tr = symbolic_da
 
 
 # Seed
-# torch.manual_seed(config.seed)
-# torch.random.manual_seed(config.seed)
-# np.random.seed(config.seed)
-# torch.cuda.manual_seed(config.seed)
-# random.seed(config.seed)
+torch.manual_seed(config.seed)
+torch.random.manual_seed(config.seed)
+np.random.seed(config.seed)
+torch.cuda.manual_seed(config.seed)
+random.seed(config.seed)
 
 # Formula PL
 parserPL = LTLfParserPL(config.max_length_traces, alphabet)
 f = parserPL(formula)
 f_pl = f.to_propositional(parserPL.predicates, config.max_length_traces, 0)
+y1 = Predicate('y1', config.max_length_traces*config.num_symbols)
+k = IMPLIES([f_pl, y1])
 
 train_img_seq, train_symbolic_sequences, train_acceptance_img = create_image_sequence_dataset_sampling_NME(train_data, 
                                                                              len(alphabet),
@@ -161,14 +164,15 @@ data = image_seq_dataset
 classifier = CNN_NME(num_channels, num_classes, nodes_linear, mutually_exc=config.mutually_exclusive_symbols)
 classifier.load_state_dict(torch.load(f"{MODELS_FOLDER}/{config.cnn_model}", weights_only=True))
 logical_nn = LogicalNetwork(classifier, 
-                            formula, 
+                            k,
+                            # formula, 
                             data=data, 
                             symbolic_dataset=symbolic_dataset, 
                             lr=config.hyperparameters["learning_rate"],
                             batch_size=config.hyperparameters["batch_size"],
                             seq_max_len=config.max_length_traces,
                             mutex=config.mutually_exclusive_symbols,
-                            schedule=0.1,
+                            schedule=1.,
                             max_iterations_lrl=1)
 
 

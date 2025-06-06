@@ -11,9 +11,12 @@ settings = {"ME": True, # Mutually Exclusive setting
                "NME": True # Non-mutually Exclusive setting
                }
 methods = {
-    "ILR": True,
-    "DFA_baseline": False,
+    "ILR": True
     }
+
+
+
+
 
 
     
@@ -29,7 +32,6 @@ for setting in settings.keys():
                             cwd=generate_experiment_NME_folder)
     
     # Folder paths
-    folder_DFA = os.path.join(os.getcwd(), "_DFA_baseline")
     folder_IRL = os.path.join(os.getcwd(), "_ILR")
 
     if (setting == 'ME') and (settings[setting]) :
@@ -37,6 +39,7 @@ for setting in settings.keys():
         NUM_PASSES_IMG = 5
         experiments_folder = f"experiments_{setting}"
         experiments = [name for name in os.listdir(experiments_folder) if (os.path.isdir(f"{experiments_folder}/{name}") and name.startswith("experiment_"))]
+        
         for experiment in experiments:
             print("-----------------------------------------")
             print(f"Running experiment: {experiment}")
@@ -85,13 +88,6 @@ for setting in settings.keys():
                                     "--num_samples", str(NUM_SAMPLES),
                                     "--num_passes_img", str(NUM_PASSES_IMG)],
                                     cwd=folder_IRL)
-                if (method == 'DFA_baseline') and (methods[method]):
-                    print("Method: DFA (baseline)")
-                    subprocess.run(["python", f"run_experiment_DFA_{setting}.py",
-                                    "--experiment", experiment,
-                                    "--num_samples", str(NUM_SAMPLES),
-                                    "--num_passes_img", str(NUM_PASSES_IMG)],
-                                    cwd=folder_DFA)
                 
     
     if (setting == 'NME' and settings[setting]):
@@ -100,6 +96,7 @@ for setting in settings.keys():
         PCT_LEN4 = 0.2
         experiments_folder = f"experiments_{setting}"
         experiments = [name for name in os.listdir(experiments_folder) if (os.path.isdir(f"{experiments_folder}/{name}") and name.startswith("experiment_"))]
+
         for experiment in experiments:
             print("-----------------------------------------")
             print(f"Running experiment: {experiment}")
@@ -167,12 +164,5 @@ for setting in settings.keys():
                                     # "--num_samples", str(NUM_SAMPLES),
                                     "--num_passes_img", str(NUM_PASSES_IMG)],
                                     cwd=folder_IRL)
-                if (method == 'DFA_baseline') and (methods[method]):
-                    print("Method: DFA (baseline)")
-                    subprocess.run(["python", f"run_experiment_DFA_{setting}.py",
-                                    "--experiment", experiment,
-                                    # "--num_samples", str(NUM_SAMPLES),
-                                    "--num_passes_img", str(NUM_PASSES_IMG)],
-                                    cwd=folder_DFA)
                 
 
