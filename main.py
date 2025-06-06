@@ -15,10 +15,6 @@ methods = {
     }
 
 
-
-
-
-
     
 for setting in settings.keys():
     # Generate experiments
