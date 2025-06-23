@@ -82,8 +82,43 @@ def eval_image_classification_from_traces_NME(
 
     return overall_accuracy
 
+def eval_image_classification_from_traces_baseline(traces_images, traces_labels, classifier, mutually_exclusive):
+    total = 0
+    correct = 0
+    classifier.eval()
+
+
+    with torch.no_grad():
+        for i in range(len(traces_labels)) :
+            t_sym = traces_labels[i].to(device)
+            t_img = traces_images[i].to(device)
+
+            pred_sym = classifier(t_img)
+
+            if  not mutually_exclusive:
+
+                y1 = torch.ones(t_sym.size()).to(device)
+                y2 = torch.zeros(t_sym.size()).to(device)
+
+                output_sym = pred_sym.where(pred_sym <= 0.5, y1)
+                output_sym = output_sym.where(pred_sym > 0.5, y2)
+
+                correct += torch.sum(output_sym == t_sym).item()
+                total += torch.numel(pred_sym)
+
+            else:
+                output_sym = pred_sym.data.max(1, keepdim=True)[1]
+
+                t_sym = t_sym.data.max(1, keepdim=True)[1]
+
+                correct += torch.sum(output_sym == t_sym).item()
+                total += t_sym.size()[0]
+
+    accuracy = 100. * correct / (float)(total)
+    return accuracy
+
 class LogicalNetwork(nn.Module):
-    def __init__(self, nn_layer, formula, data, symbolic_dataset, lr, batch_size, seq_max_len, mutex, w=1.0, schedule=1.0, max_iterations_lrl=10):
+    def __init__(self, nn_layer, formula, data, symbolic_dataset, lr, batch_size, seq_max_len, mutex, w=1.0, schedule=1.0, max_iterations_lrl=10, baseline=False):
         super(LogicalNetwork, self).__init__()
         self.nn_layer = nn_layer # Perception layer: CNN
         self.formula = formula.to(device)
@@ -93,9 +128,10 @@ class LogicalNetwork(nn.Module):
         self.schedule = schedule
         self.max_iterations_lrl = max_iterations_lrl
         self.mutex = mutex
+        self.baseline = baseline
 
         # Data
-        if mutex:
+        if mutex or baseline:
             self.train_img_seq, self.train_acceptance_img, self.test_img_seq_hard, self.test_acceptance_img_hard = data    
         else:    
             self.train_img_seq, self.train_symbolic_sequences, self.train_acceptance_img, self.test_img_seq_hard, self.test_symbolic_sequences, self.test_acceptance_img_hard = data
@@ -106,12 +142,17 @@ class LogicalNetwork(nn.Module):
         self.batch_size = batch_size
 
     def eval_image_classification(self):
-        if self.mutex:
+        if self.mutex and (not self.baseline):
             train_acc = eval_image_classification_from_traces_ME(self.train_img_seq, self.train_traces, self.nn_layer, mutually_exclusive=self.mutex)
             test_acc = eval_image_classification_from_traces_ME(self.test_img_seq_hard, self.test_traces, self.nn_layer, mutually_exclusive=self.mutex)
-        else:
+        elif (not self.mutex) and (not self.baseline):
             train_acc = eval_image_classification_from_traces_NME(self.train_img_seq, self.train_symbolic_sequences, self.nn_layer, mutually_exclusive=self.mutex, device=device)
             test_acc = eval_image_classification_from_traces_NME(self.test_img_seq_hard, self.test_symbolic_sequences, self.nn_layer, mutually_exclusive=self.mutex, device=device)
+        elif self.baseline:
+            train_acc = eval_image_classification_from_traces_baseline(self.train_img_seq, self.train_traces, self.nn_layer, mutually_exclusive=self.mutex)
+            test_acc = eval_image_classification_from_traces_baseline(self.test_img_seq_hard, self.test_traces, self.nn_layer, mutually_exclusive=self.mutex)
+
+
         return train_acc, test_acc
         
     def train_classifier(self, num_of_epochs, max_grad_norm=1.):

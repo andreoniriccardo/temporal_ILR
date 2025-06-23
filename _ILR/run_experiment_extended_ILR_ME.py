@@ -7,8 +7,6 @@ import yaml
 import argparse
 import json
 import pickle
-import random
-import numpy as np
 
 
 from logical_network import LogicalNetwork
@@ -27,19 +25,21 @@ from utils.logic.parser import LTLfParser as LTLfParserPL
 from utils.logic.formula import Predicate, IMPLIES
 from utils.save_results import save_results 
 from utils.save_model import save_model
-from utils.image_normalization import normalize_image_sequences_pytorch
-from utils.create_dataset import create_image_sequence_dataset_sampling_NME
-from utils.classifier import CNN_NME
+from utils.create_dataset import create_image_sequence_dataset_sampling_ME
+from utils.classifier import CNN_ME
+EXPERIMENTS_FOLDER = "../experiments_extended_ME"
 
-EXPERIMENTS_FOLDER = '../experiments_NME'
+
 # -----------------------------------------------------------------------------
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("--experiment_name", type=str, required=True)
+arg_parser.add_argument("--num_samples", type=int, required=True)
 arg_parser.add_argument("--num_passes_img", type=int, required=True)
 args = arg_parser.parse_args()
 
 experiment_name = args.experiment_name
+NUM_SAMPLES = args.num_samples
 NUM_PASSES_IMG = args.num_passes_img
 
 
@@ -48,6 +48,11 @@ with open(f"{EXPERIMENTS_FOLDER}/{experiment_name}/config.yaml", "r") as f:
     config = argparse.Namespace(**config)
 
 print(config)
+
+# Seed
+torch.manual_seed(config.seed)
+torch.random.manual_seed(config.seed)
+torch.cuda.manual_seed(config.seed)
 
 # Create results folder
 if not os.path.exists(f"{EXPERIMENTS_FOLDER}/{experiment_name}/results"):
@@ -83,19 +88,11 @@ print("Formula: ", formula)
 
 # Dataset creation
 alphabet = ["c" + str(i) for i in range(config.num_symbols)]
-
 # Loading symbolic dataset
 with open(f"{EXPERIMENTS_FOLDER}/{experiment_name}/dataset/symbolic_dataset.pickle", "rb") as f:
     symbolic_dataset = pickle.load(f)
 train_traces, test_traces, train_acceptance_tr, test_acceptance_tr = symbolic_dataset
 
-
-# Seed
-torch.manual_seed(config.seed)
-torch.random.manual_seed(config.seed)
-np.random.seed(config.seed)
-torch.cuda.manual_seed(config.seed)
-random.seed(config.seed)
 
 # Formula PL
 parserPL = LTLfParserPL(config.max_length_traces, alphabet)
@@ -104,25 +101,23 @@ f_pl = f.to_propositional(parserPL.predicates, config.max_length_traces, 0)
 y1 = Predicate('y1', config.max_length_traces*config.num_symbols)
 k = IMPLIES([f_pl, y1])
 
-train_img_seq, train_symbolic_sequences, train_acceptance_img = create_image_sequence_dataset_sampling_NME(train_data, 
+
+train_img_seq, train_acceptance_img = create_image_sequence_dataset_sampling_ME(train_data, 
                                                                              len(alphabet),
                                                                              train_traces,
                                                                              train_acceptance_tr,
                                                                              num_passes=NUM_PASSES_IMG,
                                                                              seed=config.seed,
                                                                              shuffle=False)
-test_img_seq, test_symbolic_sequences, test_acceptance_img = create_image_sequence_dataset_sampling_NME(test_data, 
+test_img_seq, test_acceptance_img = create_image_sequence_dataset_sampling_ME(test_data, 
                                                                              len(alphabet),
                                                                              test_traces,
                                                                              test_acceptance_tr,
                                                                              num_passes=NUM_PASSES_IMG,
                                                                              seed=config.seed,
                                                                              shuffle=False)
-
-train_img_seq = normalize_image_sequences_pytorch(train_img_seq)
-test_img_seq = normalize_image_sequences_pytorch(test_img_seq)
-image_seq_dataset = (train_img_seq, train_symbolic_sequences, train_acceptance_img, 
-                     test_img_seq, test_symbolic_sequences, test_acceptance_img)
+image_seq_dataset = (train_img_seq, train_acceptance_img, 
+                     test_img_seq, test_acceptance_img)
 
 unique_train_traces = set()
 for t in train_traces:
@@ -147,7 +142,9 @@ dataset_stats = {
         "img_seq_tot": len(test_img_seq), 
         "img_seq_accepting": sum(test_acceptance_img), 
         "img_seq_accepting_ratio": sum(test_acceptance_img) / len(test_img_seq) 
-    }
+    },
+    "NUM_PASSES_IMG": NUM_PASSES_IMG,
+    "NUM_SAMPLES": NUM_SAMPLES
 }
 
 with open(f"{EXPERIMENTS_FOLDER}/{experiment_name}/dataset/dataset_stats_ILR.json", "w") as f:
@@ -161,7 +158,8 @@ nodes_linear = 54
 
 formula = f_pl
 data = image_seq_dataset
-classifier = CNN_NME(num_channels, num_classes, nodes_linear, mutually_exc=config.mutually_exclusive_symbols)
+
+classifier = CNN_ME(num_channels, num_classes, nodes_linear, mutually_exc=config.mutually_exclusive_symbols)
 classifier.load_state_dict(torch.load(f"{MODELS_FOLDER}/{config.cnn_model}", weights_only=True))
 logical_nn = LogicalNetwork(classifier, 
                             k,
@@ -171,9 +169,7 @@ logical_nn = LogicalNetwork(classifier,
                             lr=config.hyperparameters["learning_rate"],
                             batch_size=config.hyperparameters["batch_size"],
                             seq_max_len=config.max_length_traces,
-                            mutex=config.mutually_exclusive_symbols,
-                            schedule=1.,
-                            max_iterations_lrl=1)
+                            mutex=config.mutually_exclusive_symbols)
 
 
 loss_list, train_image_classification_accuracy_list, test_image_classification_accuracy_list, time_list = logical_nn.train_classifier(config.hyperparameters["num_epochs"])

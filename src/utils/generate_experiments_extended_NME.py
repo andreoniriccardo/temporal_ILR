@@ -4,10 +4,6 @@ import os
 
 from declare_formulas import formulas, formulas_names
 
-# IMPORTANT: 
-# To run the script Windows must be set to accept long file names
-# To fix this error on your Windows machine on regedit and navigate to Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem and edit LongPathsEnabled and set value from 0 to 1
-
 # Set seed for reproducibility
 random.seed(42)
 
@@ -16,7 +12,7 @@ N_SYMBOLS_OPTIONS = [2, 3, 4]
 MAX_LENGTHS = [5, 10, 20]
 NUM_FORMULAS_PER_SYMBOL = 5
 FORMULA_INDICES = list(range(len(formulas)))
-EXPERIMENT_FOLDER = "../../experiments_NME"
+EXPERIMENT_FOLDER = "../../experiments_extended_NME"
 if not os.path.exists(f"{EXPERIMENT_FOLDER}"):
     os.makedirs(f"{EXPERIMENT_FOLDER}")
 

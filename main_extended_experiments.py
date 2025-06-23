@@ -7,7 +7,7 @@ from src.utils.create_dataset import generate_sample_traces_sym_ME, generate_sam
 from src.utils.logic.parser import LTLfParser as LTLfParserPL
 
 
-settings = {"ME": True, # Mutually Exclusive setting
+settings = {"ME": False, # Mutually Exclusive setting
                "NME": True # Non-mutually Exclusive setting
                }
 methods = {
@@ -20,11 +20,11 @@ for setting in settings.keys():
     # Generate experiments
     if settings["ME"]:
         generate_experiment_ME_folder = os.path.join(os.getcwd(), "src", "utils")
-        subprocess.run(["python", f"generate_experiments_ME.py"],
+        subprocess.run(["python", f"generate_experiments_extended_ME.py"],
                             cwd=generate_experiment_ME_folder)
     if settings["NME"]:
         generate_experiment_NME_folder = os.path.join(os.getcwd(), "src", "utils")
-        subprocess.run(["python", f"generate_experiments_NME.py"],
+        subprocess.run(["python", f"generate_experiments_extended_NME.py"],
                             cwd=generate_experiment_NME_folder)
     
     # Folder paths
@@ -33,13 +33,13 @@ for setting in settings.keys():
     if (setting == 'ME') and (settings[setting]) :
         NUM_SAMPLES = 1000
         NUM_PASSES_IMG = 5
-        experiments_folder = f"experiments_{setting}"
+        experiments_folder = f"experiments_extended_{setting}"
         experiments = [name for name in os.listdir(experiments_folder) if (os.path.isdir(f"{experiments_folder}/{name}") and name.startswith("experiment_"))]
         
         for experiment in experiments:
             print("-----------------------------------------")
             print(f"Running experiment: {experiment}")
-            with open(f"experiments_{setting}/{experiment}/config.yaml", "r") as f:
+            with open(f"experiments_extended_{setting}/{experiment}/config.yaml", "r") as f:
                 config = yaml.safe_load(f)
                 config = argparse.Namespace(**config)
             # Create symbolic dataset
@@ -56,7 +56,7 @@ for setting in settings.keys():
             f = parserPL(formula)
             f_pl = f.to_propositional(parserPL.predicates, config.max_length_traces, 0)
             print('Generating symbolic dataset...')
-            if not os.path.exists(f"experiments_{setting}/{experiment}/dataset/symbolic_dataset.pickle"):
+            if not os.path.exists(f"experiments_extended_{setting}/{experiment}/dataset/symbolic_dataset.pickle"):
                 train_traces, test_traces, train_acceptance_tr, test_acceptance_tr = generate_sample_traces_sym_ME(config.max_length_traces, 
                                                         alphabet, 
                                                         f_pl, 
@@ -67,9 +67,9 @@ for setting in settings.keys():
                 symbolic_dataset = (train_traces, test_traces, train_acceptance_tr, test_acceptance_tr)
                 # Export dataset
                 # Crate dataset folder
-                if not os.path.exists(f"experiments_{setting}/{experiment}/dataset"):
-                    os.makedirs(f"experiments_{setting}/{experiment}/dataset")
-                with open(f"experiments_{setting}/{experiment}/dataset/symbolic_dataset.pickle", "wb") as f:
+                if not os.path.exists(f"experiments_extended_{setting}/{experiment}/dataset"):
+                    os.makedirs(f"experiments_extended_{setting}/{experiment}/dataset")
+                with open(f"experiments_extended_{setting}/{experiment}/dataset/symbolic_dataset.pickle", "wb") as f:
                     pickle.dump(symbolic_dataset, f)
                 print('Symbolic dataset generated and exported.')
             else:
@@ -79,7 +79,7 @@ for setting in settings.keys():
             for method in methods.keys():
                 if (method == "ILR") and (methods[method]):
                     print("Method: ILR")
-                    subprocess.run(["python", f"run_experiment_ILR_{setting}.py",
+                    subprocess.run(["python", f"run_experiment_extended_ILR_{setting}.py",
                                     "--experiment", experiment,
                                     "--num_samples", str(NUM_SAMPLES),
                                     "--num_passes_img", str(NUM_PASSES_IMG)],
@@ -90,13 +90,13 @@ for setting in settings.keys():
         NUM_PASSES_IMG = 1
         NUMBER_TRAIN_SEQUENCES = 2500
         PCT_LEN4 = 0.2
-        experiments_folder = f"experiments_{setting}"
+        experiments_folder = f"experiments_extended_{setting}"
         experiments = [name for name in os.listdir(experiments_folder) if (os.path.isdir(f"{experiments_folder}/{name}") and name.startswith("experiment_"))]
 
         for experiment in experiments:
             print("-----------------------------------------")
             print(f"Running experiment: {experiment}")
-            with open(f"experiments_{setting}/{experiment}/config.yaml", "r") as f:
+            with open(f"experiments_extended_{setting}/{experiment}/config.yaml", "r") as f:
                 config = yaml.safe_load(f)
                 config = argparse.Namespace(**config)
             # Create symbolic dataset
@@ -113,7 +113,7 @@ for setting in settings.keys():
             f = parserPL(formula)
             f_pl = f.to_propositional(parserPL.predicates, config.max_length_traces, 0)
             print('Generating symbolic dataset...')
-            if not os.path.exists(f"experiments_{setting}/{experiment}/dataset/symbolic_dataset.pickle"):
+            if not os.path.exists(f"experiments_extended_{setting}/{experiment}/dataset/symbolic_dataset.pickle"):
                 traces_t_train_complete, traces_t_test_complete, accepted_train_complete, accepted_test_complete = create_complete_traces_sym_NME(
                                                     max_length_generated=4,
                                                     max_length_formula=config.max_length_traces,
@@ -144,9 +144,9 @@ for setting in settings.keys():
                 symbolic_dataset = (train_traces, test_traces, train_acceptance_tr, test_acceptance_tr)
                 # Export dataset
                 # Crate dataset folder
-                if not os.path.exists(f"experiments_{setting}/{experiment}/dataset"):
-                    os.makedirs(f"experiments_{setting}/{experiment}/dataset")
-                with open(f"experiments_{setting}/{experiment}/dataset/symbolic_dataset.pickle", "wb") as f:
+                if not os.path.exists(f"experiments_extended_{setting}/{experiment}/dataset"):
+                    os.makedirs(f"experiments_extended_{setting}/{experiment}/dataset")
+                with open(f"experiments_extended_{setting}/{experiment}/dataset/symbolic_dataset.pickle", "wb") as f:
                     pickle.dump(symbolic_dataset, f)
                 print('Symbolic dataset generated and exported.')
             else:
@@ -155,9 +155,8 @@ for setting in settings.keys():
             for method in methods.keys():
                 if (method == 'ILR') and (methods[method]):
                     print("Method: ILR")
-                    subprocess.run(["python", f"run_experiment_ILR_{setting}.py",
+                    subprocess.run(["python", f"run_experiment_extended_ILR_{setting}.py",
                                     "--experiment", experiment,
-                                    # "--num_samples", str(NUM_SAMPLES),
                                     "--num_passes_img", str(NUM_PASSES_IMG)],
                                     cwd=folder_IRL)
                 
