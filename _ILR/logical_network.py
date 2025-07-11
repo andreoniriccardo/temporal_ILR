@@ -14,7 +14,7 @@ def pad_sequence(sym_sequences, max_len):
     for seq in sym_sequences:
         seq_len = seq.shape[0]
         pad_len = max_len - seq_len
-        padded = torch.cat([seq, torch.full((pad_len, seq.shape[1]), -1.0)], dim=0)  # Pad with -1
+        padded = torch.cat([seq, torch.full((pad_len, seq.shape[1]), -1.0).to(seq.device)], dim=0)  # Pad with -1
         mask = torch.cat([torch.ones(seq_len), torch.zeros(pad_len)], dim=0)
         padded_sequences.append(padded)
     return torch.stack(padded_sequences)
@@ -197,7 +197,7 @@ class LogicalNetwork(nn.Module):
                 original_batch_symbolic_tensor_shape = batch_symbolic_tensor.shape
                 batch_symbolic_tensor = batch_symbolic_tensor.flatten(start_dim=1) 
                 y = torch.zeros((batch_symbolic_tensor.size(0), 1))
-                batch_symbolic_tensor = torch.cat((batch_symbolic_tensor, y), dim=1)
+                batch_symbolic_tensor = torch.cat((batch_symbolic_tensor, y.to(batch_symbolic_tensor.device)), dim=1)
 
                 start_time_logical = time.time()
                 target_k = 1.

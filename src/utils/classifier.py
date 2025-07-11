@@ -2,6 +2,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
+import math
+from torch.distributions import Uniform, SigmoidTransform, AffineTransform, TransformedDistribution
+
+def logistic_distribution(device, mean=0.0, std_dev=1.0):
+    scale = std_dev * math.sqrt(3.) / math.pi
+
+    base_distribution = Uniform(torch.tensor(0., device=device), torch.tensor(1., device=device))
+    transforms = [SigmoidTransform().inv, AffineTransform(loc=torch.tensor(mean, device=device), scale=torch.tensor(scale, device=device))]
+    logistic = TransformedDistribution(base_distribution, transforms)
+
+    return logistic
+
+
 class CNN_ME(nn.Module):
     def __init__(self, channels, classes, nodes_linear, mutually_exc=True):
         super().__init__()
@@ -61,5 +74,9 @@ class CNN_NME(nn.Module):
             x = F.relu(self.fc1(x)) 
         else:
             x = self.fc1(x)
+
+        if self.training:
+            noise = logistic_distribution(x.device, mean=0.0, std_dev=1.0).sample(x.shape)
+            x = x + noise
             
         return self.activation(x)

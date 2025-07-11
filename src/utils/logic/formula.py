@@ -1,5 +1,19 @@
 import torch
 
+
+import math
+from torch.distributions import Uniform, SigmoidTransform, AffineTransform, TransformedDistribution
+
+def logistic_distribution(device, mean=0.0, std_dev=1.0):
+    scale = std_dev * math.sqrt(3.) / math.pi
+
+    base_distribution = Uniform(torch.tensor(0., device=device), torch.tensor(1., device=device))
+    transforms = [SigmoidTransform().inv, AffineTransform(loc=torch.tensor(mean, device=device), scale=torch.tensor(scale, device=device))]
+    logistic = TransformedDistribution(base_distribution, transforms)
+
+    return logistic
+
+
 class Formula(torch.nn.Module):
     def __init__(self, sub_formulas):
         super().__init__()
@@ -61,7 +75,18 @@ class Predicate(Formula):
 
     def forward(self, truth_values):
         return torch.unsqueeze(truth_values[:, self.index], 1)
-    
+        #
+        # if self.training:
+        #     t = torch.unsqueeze(truth_values[:, self.index], 1)
+        #     # compute inverse of sigmoid
+        #     # l = torch.log(t / (1 - t + 1e-10))  # add small value to avoid division by zero
+        #     l = torch.logit(t, eps=1e-10)  # use logit function for numerical stability
+        #
+        #     noise = logistic_distribution(truth_values.device).sample(t.shape)
+        #     return torch.sigmoid(l + noise)
+        # else:
+        #     return torch.unsqueeze(truth_values[:, self.index], 1)
+
     def backward(self, delta, randomized=False):  # TODO: implement the usage of randomized
 
         self.deltas.append(delta)
