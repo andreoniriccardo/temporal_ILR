@@ -98,6 +98,11 @@ class PadZero(Formula):
 
     def function(self, truth_values):
         return torch.where(truth_values == -1.0, 0.0, truth_values)
+    def boost_function(self, truth_values, delta):
+        # Refinement logic:
+        # If input is valid, propagate delta (Identity).
+        # If input is padding (-1), we cannot refine it. Return 0.
+        return torch.where(truth_values == -1.0, 0.0, delta)
 
 class PadOne(Formula):
     """
@@ -110,7 +115,11 @@ class PadOne(Formula):
 
     def function(self, truth_values):
         return torch.where(truth_values == -1.0, 1.0, truth_values)
-    
+    def boost_function(self, truth_values, delta):
+        # Refinement logic:
+        # If input is valid, propagate delta (Identity).
+        # If input is padding (-1), we cannot refine it. Return 0.
+        return torch.where(truth_values == -1.0, 0.0, delta)
 class NOT(Formula):
     def __init__(self, sub_formula):
         super().__init__([sub_formula])
