@@ -1,19 +1,5 @@
 import torch
 
-
-import math
-from torch.distributions import Uniform, SigmoidTransform, AffineTransform, TransformedDistribution
-
-def logistic_distribution(device, mean=0.0, std_dev=1.0):
-    scale = std_dev * math.sqrt(3.) / math.pi
-
-    base_distribution = Uniform(torch.tensor(0., device=device), torch.tensor(1., device=device))
-    transforms = [SigmoidTransform().inv, AffineTransform(loc=torch.tensor(mean, device=device), scale=torch.tensor(scale, device=device))]
-    logistic = TransformedDistribution(base_distribution, transforms)
-
-    return logistic
-
-
 class Formula(torch.nn.Module):
     def __init__(self, sub_formulas):
         super().__init__()
@@ -75,17 +61,6 @@ class Predicate(Formula):
 
     def forward(self, truth_values):
         return torch.unsqueeze(truth_values[:, self.index], 1)
-        #
-        # if self.training:
-        #     t = torch.unsqueeze(truth_values[:, self.index], 1)
-        #     # compute inverse of sigmoid
-        #     # l = torch.log(t / (1 - t + 1e-10))  # add small value to avoid division by zero
-        #     l = torch.logit(t, eps=1e-10)  # use logit function for numerical stability
-        #
-        #     noise = logistic_distribution(truth_values.device).sample(t.shape)
-        #     return torch.sigmoid(l + noise)
-        # else:
-        #     return torch.unsqueeze(truth_values[:, self.index], 1)
 
     def backward(self, delta, randomized=False):  # TODO: implement the usage of randomized
 
@@ -112,6 +87,29 @@ class Predicate(Formula):
     def reset_deltas(self):
         self.deltas = []
 
+class PadZero(Formula):
+    """
+    """
+    def __init__(self, sub_formula):
+        super().__init__([sub_formula])
+        
+    def get_name(self, parenthesis=False):
+        return self.sub_formulas[0].get_name(parenthesis)
+
+    def function(self, truth_values):
+        return torch.where(truth_values == -1.0, 0.0, truth_values)
+
+class PadOne(Formula):
+    """
+    """
+    def __init__(self, sub_formula):
+        super().__init__([sub_formula])
+        
+    def get_name(self, parenthesis=False):
+        return self.sub_formulas[0].get_name(parenthesis)
+
+    def function(self, truth_values):
+        return torch.where(truth_values == -1.0, 1.0, truth_values)
     
 class NOT(Formula):
     def __init__(self, sub_formula):
@@ -131,7 +129,7 @@ class NOT(Formula):
         not_values = torch.where(false_mask, 1.0, not_values)
         not_values = torch.where(true_mask, -1.0, not_values)
 
-        not_values = torch.where(pad_mask, 1.0, not_values)
+        not_values = torch.where(pad_mask, -1.0, not_values) # pad is propagated
 
         self.forward_output = not_values
         return self.forward_output
@@ -159,9 +157,9 @@ class AND(Formula):
             return s
         
     def function(self, truth_values):
-
+        any_pad_mask = torch.any(truth_values == -1.0, dim=1, keepdim=True)
         adjusted = torch.where(
-            truth_values == -1.0, 1.0,         
+            truth_values == -1.0, 1.0, # pad diventa 1 temporaneamente per non interferire, poi viene propagato
             torch.where(
                 truth_values == -2.0, 0.0,   
                 torch.where(
@@ -171,11 +169,11 @@ class AND(Formula):
             )
         )
 
-        min_vals, _ = torch.min(adjusted, dim=1)
+        min_vals, _ = torch.min(adjusted, dim=1, keepdim=True)
         
-        final_output = min_vals
+        final_output = torch.where(any_pad_mask, -1.0, min_vals)
         
-        self.forward_output = final_output.unsqueeze(1)
+        self.forward_output = final_output#.unsqueeze(1)
         return self.forward_output
 
 
@@ -216,10 +214,9 @@ class OR(Formula):
             return s
         
     def function(self, truth_values):
-
-        
+        any_pad_mask = torch.any(truth_values == -1.0, dim=1, keepdim=True)
         adjusted = torch.where(
-            truth_values == -1.0, 0.0,       
+            truth_values == -1.0, 0.0,       # pad diventa 0 temporaneamente per non interferire, poi viene propagato   
             torch.where(
                 truth_values == -2.0, 0.0,       
                 torch.where(
@@ -229,12 +226,11 @@ class OR(Formula):
             )
         )
 
-
-        max_vals, _ = torch.max(adjusted, dim=1)
+        max_vals, _ = torch.max(adjusted, dim=1, keepdim=True)
         
-        final_output = max_vals
+        final_output = torch.where(any_pad_mask, -1.0, max_vals)
         
-        self.forward_output = final_output.unsqueeze(1)
+        self.forward_output = final_output#.unsqueeze(1)
         return self.forward_output
 
     def boost_function(self, truth_values, delta):

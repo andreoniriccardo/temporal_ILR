@@ -1,4 +1,4 @@
-from .formula import Formula, Predicate, AND, OR, NOT, TRUE, FALSE, IMPLIES
+from .formula import Formula, Predicate, AND, OR, NOT, TRUE, FALSE, PadZero, PadOne
 
 class LTLfNode():
     def to_propositional(self, sequence_len, current_time):
@@ -68,11 +68,13 @@ class LTLfAlways(LTLfNode):
         subformulas = []
         for t in range(current_time, sequence_len):
             subformula = self.formula.to_propositional(predicates, sequence_len, t)
-            subformulas.append(subformula)
+            # subformulas.append(subformula)
+            subformulas.append(PadOne(subformula))
         if subformulas:
+            # return AND(subformulas)
             return AND(subformulas)
         else:
-            raise ValueError("No argument give.")
+            raise ValueError("No argument given.")
         
 class LTLfEventually(LTLfNode):
     def __init__(self, formula):
@@ -81,11 +83,12 @@ class LTLfEventually(LTLfNode):
         subformulas = []
         for t in range(current_time, sequence_len):
             subformula = self.formula.to_propositional(predicates, sequence_len, t)
-            subformulas.append(subformula)
+            # subformulas.append(subformula)
+            subformulas.append(PadZero(subformula))
         if subformulas:
             return OR(subformulas)
         else:
-            raise ValueError("No argument give.")
+            raise ValueError("No argument given.")
 
 class LTLfUntil(LTLfNode):
     def __init__(self, subformulas):
@@ -98,13 +101,12 @@ class LTLfUntil(LTLfNode):
         converted_right = self.right.to_propositional(predicates, sequence_len, current_time)
 
         if current_time == sequence_len - 1:
-            # return converted_right
             return OR([converted_right, FALSE()]) 
         
         converted_left = self.left.to_propositional(predicates, sequence_len, current_time)
-        until_next = LTLfUntil([self.left, self.right]).to_propositional(predicates, sequence_len, current_time + 1)
+        future = LTLfUntil([self.left, self.right]).to_propositional(predicates, sequence_len, current_time + 1)
             
-        return OR([converted_right, AND([converted_left, until_next])])
+        return OR([converted_right, AND([converted_left, PadZero(future)])])
 
 class LTLfRelease(LTLfNode):
     def __init__(self, subformulas):
@@ -122,9 +124,9 @@ class LTLfNext(LTLfNode):
     def __init__(self, formula):
         self.formula = formula
     def to_propositional(self, predicates, sequence_len, current_time):
-        if current_time >= sequence_len-1:
+        if current_time >= sequence_len - 1:
             return FALSE()
-        return self.formula.to_propositional(predicates, sequence_len, current_time + 1)
+        return PadZero(self.formula.to_propositional(predicates, sequence_len, current_time + 1))
     
 class LTLfWeakUntil(LTLfNode):
     def __init__(self, subformulas):
@@ -135,18 +137,18 @@ class LTLfWeakUntil(LTLfNode):
             return TRUE()
         
         converted_right = self.right.to_propositional(predicates, sequence_len, current_time)
-        
         converted_left = self.left.to_propositional(predicates, sequence_len, current_time)
-        until_next = LTLfWeakUntil([self.left, self.right]).to_propositional(predicates, sequence_len, current_time + 1)
-            
-        return OR([converted_right, AND([converted_left, until_next])])
+        
+        future = LTLfWeakUntil([self.left, self.right]).to_propositional(predicates, sequence_len, current_time + 1)
+        
+        return OR([converted_right, AND([converted_left, PadOne(future)])])
 
 class LTLfWeakNext(LTLfNode):
     def __init__(self, formula):
         self.formula = formula
     def to_propositional(self, predicates, sequence_len, current_time):
-        if current_time >= sequence_len-1:
+        if current_time >= sequence_len - 1:
             return TRUE()
-        return self.formula.to_propositional(predicates, sequence_len, current_time + 1)
+        return PadOne(self.formula.to_propositional(predicates, sequence_len, current_time + 1))
 
 
